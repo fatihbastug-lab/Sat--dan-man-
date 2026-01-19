@@ -3,110 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sesli Satış Asistanı v3</title>
+    <title>AI Satış Koçu & Puanlama</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary: #6366f1; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --border: #334155; --success: #10b981; }
+        :root { --primary: #6366f1; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --border: #334155; --success: #10b981; --warn: #f59e0b; }
         body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .header { background: var(--card); padding: 20px; border-radius: 15px; border: 1px solid var(--border); margin-bottom: 20px; text-align: center; }
-        .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); position: relative; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .header { background: var(--card); padding: 20px; border-radius: 15px; border: 1px solid var(--border); text-align: center; margin-bottom: 20px; }
         
-        /* Mikrofon Alanı */
-        .mic-section { text-align: center; margin-top: 20px; }
-        .mic-btn { width: 80px; height: 80px; border-radius: 50%; border: none; background: var(--primary); color: white; font-size: 2rem; cursor: pointer; transition: 0.3s; box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
+        /* Müşteri Seçimi */
+        .char-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .char-card { background: var(--card); border: 1px solid var(--border); padding: 10px; border-radius: 10px; text-align: center; cursor: pointer; transition: 0.3s; }
+        .char-card.active { border-color: var(--primary); background: rgba(99, 102, 241, 0.1); }
+        .char-card i { font-size: 1.5rem; margin-bottom: 5px; display: block; }
+
+        /* Simülasyon Alanı */
+        .sim-box { background: var(--card); border-radius: 15px; padding: 20px; border: 1px solid var(--border); }
+        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; margin-bottom: 10px; background: var(--primary); }
+        
+        .transcript-box { background: #0f172a; padding: 15px; border-radius: 10px; margin: 15px 0; min-height: 60px; border: 1px dashed var(--border); font-style: italic; color: #94a3b8; }
+        
+        .mic-btn { width: 70px; height: 70px; border-radius: 50%; border: none; background: var(--primary); color: white; font-size: 1.8rem; cursor: pointer; display: block; margin: 0 auto; transition: 0.3s; }
         .mic-btn.listening { background: #ef4444; animation: pulse 1.5s infinite; }
-        
-        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { transform: scale(1); } }
-        
-        .status { margin-top: 10px; font-size: 0.9rem; color: #94a3b8; height: 20px; }
-        .transcript-box { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-top: 15px; min-height: 50px; border: 1px dashed var(--border); }
-        .feedback { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        /* Puanlama Paneli */
+        .score-overlay { display: none; margin-top: 20px; animation: slideUp 0.5s ease; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .score-card { background: #0f172a; padding: 20px; border-radius: 12px; border: 1px solid var(--success); text-align: center; }
+        .score-num { font-size: 3rem; font-weight: 700; color: var(--success); margin: 10px 0; }
+        .stat-line { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; border-bottom: 1px solid #1e293b; padding-bottom: 5px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header class="header">
-        <h1>Sesli Satış Simülatörü</h1>
-        <p style="color:#94a3b8">Mikrofona bas ve müşteriye yanıt ver!</p>
+        <h1 style="font-size:1.4rem; margin:0;">AI Satış Simülatörü v4</h1>
+        <p style="font-size:0.85rem; color:#94a3b8;">Karakter Seç ve Sesli Yanıtla</p>
     </header>
 
-    <div class="card">
-        <div id="customer-prompt" style="font-size: 1.2rem; font-weight: 600; color: var(--primary); margin-bottom: 15px;">
-            Müşteri: "Neden sizi tercih etmeliyim, farkınız nedir?"
+    <div class="char-grid" id="char-selector">
+        <div class="char-card active" onclick="selectChar('nazik')">
+            <i class="fas fa-smile text-success"></i>
+            <span style="font-size:0.8rem">Nazik Müşteri</span>
         </div>
-        
-        <div class="transcript-box" id="transcript">Söyledikleriniz burada görünecek...</div>
-        
-        <div class="mic-section">
-            <button id="start-record" class="mic-btn"><i class="fas fa-microphone"></i></button>
-            <div id="status" class="status">Başlatmak için dokun</div>
+        <div class="char-card" onclick="selectChar('zor')">
+            <i class="fas fa-angry" style="color:#ef4444"></i>
+            <span style="font-size:0.8rem">Zor Müşteri</span>
+        </div>
+        <div class="char-card" onclick="selectChar('bilgili')">
+            <i class="fas fa-user-graduate" style="color:#f59e0b"></i>
+            <span style="font-size:0.8rem">Bilgili Müşteri</span>
+        </div>
+    </div>
+
+    <div class="sim-box">
+        <div id="customer-tag" class="status-badge">Müşteri Konuşuyor...</div>
+        <div id="customer-speech" style="font-size: 1.1rem; font-weight: 500; min-height: 50px;">
+            "Merhaba, ürününüzle ilgileniyorum ama neden sizi seçmeliyim?"
         </div>
 
-        <div id="feedback-area" class="feedback"></div>
+        <div class="transcript-box" id="user-transcript">Cevabınız burada görünecek...</div>
+
+        <button id="mic-btn" class="mic-btn"><i class="fas fa-microphone"></i></button>
+        <p id="mic-status" style="text-align:center; font-size:0.8rem; margin-top:10px; color:#94a3b8;">Konuşmak için basın</p>
+    </div>
+
+    <div id="score-panel" class="score-overlay">
+        <div class="score-card">
+            <h2 style="margin:0; font-size:1.1rem;">Görüşme Karnesi</h2>
+            <div class="score-num" id="total-score">0</div>
+            <div class="stat-line"><span>İkna Gücü:</span><span id="stat-ikna" class="highlight">0%</span></div>
+            <div class="stat-line"><span>Profesyonellik:</span><span id="stat-prof" class="highlight">0%</span></div>
+            <div class="stat-line"><span>Anahtar Kelimeler:</span><span id="stat-keywords" class="highlight">-</span></div>
+            <p id="ai-comment" style="font-size:0.85rem; color:#94a3b8; margin-top:15px; font-style:italic;"></p>
+            <button onclick="window.location.reload()" style="background:var(--primary); color:white; border:none; padding:10px 20px; border-radius:8px; margin-top:10px; cursor:pointer;">Tekrar Dene</button>
+        </div>
     </div>
 </div>
 
 <script>
-    const startBtn = document.getElementById('start-record');
-    const status = document.getElementById('status');
-    const transcriptDiv = document.getElementById('transcript');
-    const feedbackArea = document.getElementById('feedback-area');
+    const chars = {
+        nazik: { prompt: "Ürününüz çok güzel görünüyor, bana biraz avantajlarından bahseder misiniz?", keywords: ["kalite", "fayda", "hizmet", "mutluluk"], bonus: 20 },
+        zor: { prompt: "Herkes aynı şeyi söylüyor, sizin farkınız ne? Fiyatınız neden bu kadar yüksek?", keywords: ["tasarruf", "garanti", "fark", "yatırım"], bonus: 40 },
+        bilgili: { prompt: "Piyasadaki diğer çözümlerle karşılaştırdığınızda teknik verimlilik oranınız nedir?", keywords: ["verim", "teknik", "performans", "rapor"], bonus: 30 }
+    };
 
-    // Web Speech API Ayarları
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-        alert("Tarayıcınız ses tanıma özelliğini desteklemiyor. Lütfen Chrome kullanın.");
-    } else {
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'tr-TR';
-        recognition.interimResults = false;
+    let activeChar = 'nazik';
+    const speech = window.speechSynthesis;
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'tr-TR';
 
-        startBtn.onclick = () => {
-            recognition.start();
-            startBtn.classList.add('listening');
-            status.innerText = "Dinleniyor...";
-            feedbackArea.style.display = 'none';
-        };
-
-        recognition.onresult = (event) => {
-            const command = event.results[0][0].transcript.toLowerCase();
-            transcriptDiv.innerText = '"' + command + '"';
-            startBtn.classList.remove('listening');
-            status.innerText = "Analiz ediliyor...";
-            
-            analyzeVoice(command);
-        };
-
-        recognition.onerror = () => {
-            startBtn.classList.remove('listening');
-            status.innerText = "Hata oluştu, tekrar dene.";
-        };
+    function selectChar(type) {
+        activeChar = type;
+        document.querySelectorAll('.char-card').forEach(c => c.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        document.getElementById('customer-speech').innerText = `"${chars[type].prompt}"`;
+        speak(`"${chars[type].prompt}"`);
     }
 
-    // Basit Yapay Zeka Analizi (Anahtar Kelime Kontrolü)
-    function analyzeVoice(text) {
-        // "Fiyat", "Kalite", "Güven", "Tasarruf" gibi anahtar kelimeleri kontrol eder
-        const keywords = ["kalite", "fark", "hızlı", "tasarruf", "güven", "ekonomik", "uzman"];
-        const found = keywords.some(word => text.includes(word));
+    function speak(text) {
+        speech.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'tr-TR';
+        utter.rate = 0.9;
+        speech.speak(utter);
+    }
 
-        setTimeout(() => {
-            feedbackArea.style.display = 'block';
-            if (found) {
-                feedbackArea.style.background = "rgba(16, 185, 129, 0.2)";
-                feedbackArea.style.border = "1px solid #10b981";
-                feedbackArea.innerHTML = "<strong style='color:#10b981'>✅ BAŞARILI!</strong><br>Harika! İkna edici anahtar kelimeler kullandınız. Müşteri güven duydu.";
-            } else {
-                feedbackArea.style.background = "rgba(239, 68, 68, 0.2)";
-                feedbackArea.style.border = "1px solid #ef4444";
-                feedbackArea.innerHTML = "<strong style='color:#ef4444'>❌ GELİŞTİRİLMELİ</strong><br>Cevabınız biraz zayıf kaldı. 'Kalite', 'Hız' veya 'Tasarruf' gibi somut faydalardan bahsetmelisiniz.";
+    const micBtn = document.getElementById('mic-btn');
+    micBtn.onclick = () => {
+        recognition.start();
+        micBtn.classList.add('listening');
+        document.getElementById('mic-status').innerText = "Dinleniyor...";
+    };
+
+    recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript.toLowerCase();
+        document.getElementById('user-transcript').innerText = `"${text}"`;
+        micBtn.classList.remove('listening');
+        document.getElementById('mic-status').innerText = "Analiz ediliyor...";
+        calculateScore(text);
+    };
+
+    function calculateScore(text) {
+        let score = 0;
+        let foundKeywords = [];
+        const targetKeywords = chars[activeChar].keywords;
+
+        targetKeywords.forEach(word => {
+            if (text.includes(word)) {
+                score += 25;
+                foundKeywords.push(word);
             }
-            status.innerText = "Tamamlandı";
+        });
+
+        if (text.length > 30) score += 15;
+        score += chars[activeChar].bonus; // Zorluk bonusu
+        if (score > 100) score = 100;
+
+        // Paneli Güncelle
+        setTimeout(() => {
+            document.getElementById('score-panel').style.display = 'block';
+            document.getElementById('total-score').innerText = score;
+            document.getElementById('stat-ikna').innerText = `%${score - 10}`;
+            document.getElementById('stat-prof').innerText = text.length > 20 ? "%90" : "%50";
+            document.getElementById('stat-keywords').innerText = foundKeywords.length > 0 ? foundKeywords.join(", ") : "Hiç yok";
+            
+            let comment = score > 70 ? "Harika bir görüşme! Müşteriyi ikna ettiniz." : "Biraz daha somut fayda odaklı konuşmalısınız.";
+            document.getElementById('ai-comment').innerText = `"${comment}"`;
+            speak(comment);
+            
+            document.getElementById('score-panel').scrollIntoView({behavior: "smooth"});
         }, 1000);
     }
+
+    // İlk açılışta konuş
+    window.onload = () => speak(chars.nazik.prompt);
 </script>
 
 </body>
